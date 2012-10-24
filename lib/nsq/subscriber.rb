@@ -52,22 +52,23 @@ module NSQ
     def handle_heartbeat(connection)
     end
 
-    def handle_message(connection, id, timestamp, attempts, body)
-      @block.call(id, timestamp, attempts, body)
-      connection.send_finish(id)
+    def handle_message(connection, message)
+      @block.call(message)
+      connection.send_finish(message.id)
     rescue Exception => e
       NSQ.logger.error("#{connection.name}: Exception during handle_message: #{e.message}\n\t#{e.backtrace.join("\n\t")}")
       if @max_tries && attempts >= @max_tries
         NSQ.logger.warning("#{connection.name}: Giving up on message after #{@max_tries} tries: #{body.inspect}")
-        connection.send_finish(id)
+        connection.send_finish(message.id)
       else
-        connection.send_requeue(id, attempts * @requeue_delay)
+        connection.send_requeue(message.id, attempts * @requeue_delay)
       end
     ensure
       handle_ready_count(connection)
     end
 
     def handle_ready_count(connection)
+      # TODO: Need to add 25% logic
       connection.send_ready(self.connection_max_in_flight)
     end
 
@@ -81,6 +82,10 @@ module NSQ
       NSQ.logger.error("Socket error: #{exception.message}\n\t#{exception.backtrace.join("\n\t")}")
       connection.close
       connection.connect
+    end
+
+    def to_s
+      @name
     end
   end
 end

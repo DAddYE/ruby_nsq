@@ -12,7 +12,7 @@ module NSQ
     def default_logger
       require 'logger'
       l = Logger.new($stdout)
-      l.level = Logger::DEBUG
+      l.level = Logger::INFO
       l
     end
 

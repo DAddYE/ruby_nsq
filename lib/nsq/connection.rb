@@ -34,7 +34,7 @@ module NSQ
       @selector.deregister(@socket)
       write "CLS\n"
       @socket.close
-    rescue
+    rescue Exception => e
     ensure
       @socket = nil
     end
@@ -70,9 +70,9 @@ module NSQ
     end
 
     def read_messages
-      NSQ.logger.debug("Before read buffer=#{@buffer.inspect}")
+      #NSQ.logger.debug("Before read buffer=#{@buffer.inspect}")
       @buffer << @socket.read_nonblock(4096)
-      NSQ.logger.debug("After read buffer=#{@buffer.inspect}")
+      #NSQ.logger.debug("After read buffer=#{@buffer.inspect}")
       while @buffer.length >= 8
         size, frame = @buffer.unpack('NN')
         break if @buffer.length < 4+size
@@ -92,10 +92,11 @@ module NSQ
           when NSQ::FRAME_TYPE_MESSAGE
             raise "Bad message: #{@buffer.inspect}" if size < 34
             ts_hi, ts_lo, attempts, id = @buffer.unpack('@8NNna16')
-            timestamp = Time.at((ts_hi * 2**32 + ts_lo) / 1000000000.0)
             body = @buffer[34, size-30]
+            message = Message.new(self, id, ts_hi, ts_lo, attempts, body)
             @buffer = @buffer[(4+size)..-1]
-            @subscriber.handle_message(self, id, timestamp, attempts, body)
+            NSQ.logger.debug {"#{self}: Read message=#{message}"}
+            @subscriber.handle_message(self, message)
           else
             raise "Unrecognized message frame: #{frame} buffer=#{@buffer.inspect}"
         end
@@ -111,6 +112,10 @@ module NSQ
     def write(msg)
       NSQ.logger.debug {"#{@name}: Sending #{msg.inspect}"}
       @socket.write(msg)
+    end
+
+    def to_s
+      @name
     end
   end
 end

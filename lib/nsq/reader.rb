@@ -4,62 +4,6 @@ require 'monitor'
 require 'nio'
 #require 'thread_safe'
 
-#NSQ base reader class.
-#
-#This receives messages from nsqd and calls task methods to process that message
-#
-#It handles the logic for backing off on retries and giving up on a message
-#
-#ex.
-#    import nsq
-#
-#    def task1(message):
-#        print message
-#        return True
-#
-#    def task2(message):
-#        print message
-#        return True
-#
-#    all_tasks = {"task1": task1, "task2": task2}
-#    r = nsq.Reader(all_tasks, lookupd_http_addresses=['127.0.0.1:4161'],
-#            topic="nsq_reader", channel="asdf", lookupd_poll_interval=15)
-#    nsq.run()
-
-#import logging
-#import os
-#import ujson as json
-#import time
-#import signal
-#import socket
-#import functools
-#import urllib
-#
-#import tornado.options
-#import tornado.ioloop
-#import tornado.httpclient
-#
-#import BackoffTimer
-#import nsq
-#import async
-#
-#
-#tornado.options.define('heartbeat_file', type=str, default=None, help="path to a file to touch for heartbeats")
-
-# Reader provides a loop that calls each task provided by ``all_tasks`` up to ``max_tries``
-# requeueing on any failures with increasing multiples of ``requeue_delay`` between subsequent
-# tries of each message.
-#   options:
-#     preprocess_method - defines an optional method that can alter the message data before
-#       other task functions are called.
-#     validate_method - defines an optional method that returns a boolean as to weather or not
-#       this message should be processed.
-#     all_tasks - defines the a mapping of tasks and functions that individually will be called
-#        with the message data.
-#        ``async`` determines whether handlers will do asynchronous processing. If set to True, handlers
-#        must accept a keyword argument called "finisher" that will be a callable used to signal message
-#        completion, with a boolean argument indicating success
-
 module NSQ
   class Reader
     attr_reader :name, :long_id, :short_id
@@ -74,12 +18,13 @@ module NSQ
       @long_id                = options[:long_id]                      || Socket.gethostname
       @short_id               = options[:short_id]                     || @long_id.split('.')[0]
       NSQ.logger              = options[:logger] if options[:logger]
+      NSQ.logger.level        = options[:logger_level] if options[:logger_level]
 
-      @selector               = NIO::Selector.new
+      @selector               = ::NIO::Selector.new
       @topic_count            = Hash.new(0)
       @subscribers            = {}
       @subscriber_mutex       = Monitor.new
-      @name                   = "#{@long_id}-#{@short_id}"
+      @name                   = "#{@long_id}:#{@short_id}"
 
       raise 'Must pass either option :nsqd_tcp_addresses or :lookupd_http_addresses' if @nsqd_tcp_addresses.empty? && @lookupd_http_addresses.empty?
 
@@ -131,11 +76,12 @@ module NSQ
     end
 
     def stop
+      NSQ.logger.info("#{self}: Reader stopping...")
       @stopped = true
+      @selector.wakeup
       @subscriber_mutex.synchronize do
         @subscribers.each_value {|subscriber| subscriber.close}
       end
-      @selector.wakeup
     end
 
     def to_s
