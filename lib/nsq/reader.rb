@@ -6,11 +6,10 @@ require 'nio'
 
 module NSQ
   class Reader
-    attr_reader :name, :long_id, :short_id
+    attr_reader :name, :long_id, :short_id, :selector, :options
 
     def initialize(options={})
       @options                = options
-      @subscriber_class       = options[:subscriber_class]             || ::NSQ::Subscriber
       @poll_interval          = options[:poll_interval]                || 5
       @nsqd_tcp_addresses     = s_to_a(options[:nsqd_tcp_addresses])
       @lookupd_http_addresses = s_to_a(options[:lookupd_http_addresses])
@@ -45,7 +44,8 @@ module NSQ
       name       = "#{topic}:#{channel}"
       @subscriber_mutex.synchronize do
         raise "Already subscribed to #{name}" if @subscribers[name]
-        subscriber = @subscribers[name] = @subscriber_class.new(self, @selector, topic, channel, @options, subscribe_options, &block)
+        subscriber_class = block_given? ? Subscriber : QueueSubscriber
+        subscriber = @subscribers[name] = subscriber_class.new(self, topic, channel, subscribe_options, &block)
       end
 
       @nsqd_tcp_addresses.each do |addr|
@@ -60,7 +60,7 @@ module NSQ
       @subscriber_mutex.synchronize do
         subscriber = @subscribers[name]
         return unless subscriber
-        subscriber.close
+        subscriber.stop
         @subscribers.delete(name)
       end
     end
@@ -80,7 +80,7 @@ module NSQ
       @stopped = true
       @selector.wakeup
       @subscriber_mutex.synchronize do
-        @subscribers.each_value {|subscriber| subscriber.close}
+        @subscribers.each_value {|subscriber| subscriber.stop}
       end
     end
 

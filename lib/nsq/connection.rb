@@ -1,3 +1,5 @@
+require 'thread' #Mutex
+
 module NSQ
   class Connection
     attr_reader :name
@@ -8,11 +10,12 @@ module NSQ
       @host          = host
       @port          = port
       @name          = "#{subscriber.name}:#{host}:#{port}"
+      @write_mutex   = Mutex.new
       connect
     end
 
     def send_init(topic, channel, short_id, long_id, ready_count)
-      write(NSQ::MAGIC_V2)
+      write NSQ::MAGIC_V2
       write "SUB #{topic} #{channel} #{short_id} #{long_id}\n"
       self.send_ready(ready_count)
     end
@@ -70,9 +73,7 @@ module NSQ
     end
 
     def read_messages
-      #NSQ.logger.debug("Before read buffer=#{@buffer.inspect}")
       @buffer << @socket.read_nonblock(4096)
-      #NSQ.logger.debug("After read buffer=#{@buffer.inspect}")
       while @buffer.length >= 8
         size, frame = @buffer.unpack('NN')
         break if @buffer.length < 4+size
@@ -111,7 +112,8 @@ module NSQ
 
     def write(msg)
       NSQ.logger.debug {"#{@name}: Sending #{msg.inspect}"}
-      @socket.write(msg)
+      # We should only ever have one reader but we can have multiple readers
+      @write_mutex.synchronize { @socket.write(msg) }
     end
 
     def to_s

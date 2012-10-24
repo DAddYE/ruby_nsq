@@ -45,28 +45,10 @@ baz_queue  = reader.subscribe('test2', 'baz', :max_in_flight => baz_worker_count
 
 foo_threads = foo_worker_count.times.map do |i|
   Thread.new(i) do |i|
-    # API #1
-    until foo_queue.stopped?
-      message = foo_queue.read
-      if message
-        begin
-          puts 'Foo[%02d] read: %s' % i, message.body
-          sleep 1  # Dummy processing of message
-          # Give success status so message won't be requeued
-          message.success!
-        rescue Exception => e
-          # Message will be requeued
-          message.failure!
-        end
-      end
-    end
-
-    # API #2 (Equivalent to above)
     foo_queue.run do |message|
       puts 'Foo[%02d] read: %s' % i, message.body
-      sleep 1  # Dummy processing of message
+      sleep rand(10)  # Dummy processing of message
     end
-
     puts 'Foo[%02d] thread exiting' % i
   end
 end
@@ -83,8 +65,10 @@ baz_threads.each(&:join)
 
 ## TODO:
 
-* No block subscribe calls that will return queue
-
 * Ready logic
 
 * Backoff for connections and failed messages.
+
+* Fix timestamp
+
+* Tests!
