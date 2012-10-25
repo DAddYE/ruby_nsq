@@ -10,7 +10,7 @@ module NSQ
       @host          = host
       @port          = port
       @name          = "#{subscriber.name}:#{host}:#{port}"
-      @write_mutex   = Monitor.new
+      @write_mutex   = Mutex.new
       connect
     end
 
