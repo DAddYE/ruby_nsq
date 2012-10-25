@@ -91,7 +91,7 @@ module NSQ
             @subscriber.handle_frame_error(self, @buffer[8, size-4])
             @buffer = @buffer[(4+size)..-1]
           when NSQ::FRAME_TYPE_MESSAGE
-            raise "Bad message: #{@buffer.inspect}" if size < 34
+            raise "Bad message: #{@buffer.inspect}" if size < 30
             ts_hi, ts_lo, attempts, id = @buffer.unpack('@8NNna16')
             body = @buffer[34, size-30]
             message = Message.new(self, id, ts_hi, ts_lo, attempts, body)
@@ -112,7 +112,7 @@ module NSQ
 
     def write(msg)
       NSQ.logger.debug {"#{@name}: Sending #{msg.inspect}"}
-      # We should only ever have one reader but we can have multiple readers
+      # We should only ever have one reader but we can have multiple writers
       @write_mutex.synchronize { @socket.write(msg) }
     end
 

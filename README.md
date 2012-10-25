@@ -39,13 +39,13 @@ baz_worker_count = 20
 
 reader = NSQ.create_reader(:nsqd_tcp_addresses => '127.0.0.1:4150')
 
-foo_queue  = reader.subscribe('test',  'foo', :max_in_flight => foo_worker_count)
-bar_queue  = reader.subscribe('test2', 'bar', :max_in_flight => bar_worker_count)
-baz_queue  = reader.subscribe('test2', 'baz', :max_in_flight => baz_worker_count)
+foo_subscriber  = reader.subscribe('test',  'foo', :max_in_flight => foo_worker_count)
+bar_subscriber  = reader.subscribe('test2', 'bar', :max_in_flight => bar_worker_count)
+baz_subscriber  = reader.subscribe('test2', 'baz', :max_in_flight => baz_worker_count)
 
 foo_threads = foo_worker_count.times.map do |i|
   Thread.new(i) do |i|
-    foo_queue.run do |message|
+    foo_subscriber.run do |message|
       puts 'Foo[%02d] read: %s' % i, message.body
       sleep rand(10)  # Dummy processing of message
     end
@@ -70,5 +70,7 @@ baz_threads.each(&:join)
 * Backoff for connections and failed messages.
 
 * Fix timestamp
+
+* Implement lookupd
 
 * Tests!

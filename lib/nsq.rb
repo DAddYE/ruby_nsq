@@ -2,6 +2,7 @@ require 'nsq/loggable'
 require 'nsq/message'
 require 'nsq/reader'
 require 'nsq/subscriber'
+require 'nsq/queue_subscriber'
 require 'nsq/connection'
 
 module NSQ
