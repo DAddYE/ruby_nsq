@@ -10,7 +10,7 @@ module NSQ
       @host          = host
       @port          = port
       @name          = "#{subscriber.name}:#{host}:#{port}"
-      @write_mutex   = Mutex.new
+      @write_mutex   = Monitor.new
       connect
     end
 
@@ -34,12 +34,18 @@ module NSQ
     end
 
     def close
-      @selector.deregister(@socket)
-      write "CLS\n"
-      @socket.close
-    rescue Exception => e
-    ensure
-      @socket = nil
+      NSQ.logger.debug {"#{@name}: Closing..."}
+      @write_mutex.synchronize do
+        begin
+          @selector.deregister(@socket)
+          # Use straight socket to write otherwise we need to use Monitor instead of Mutex
+          @socket.write "CLS\n"
+          @socket.close
+        rescue Exception => e
+        ensure
+          @socket = nil
+        end
+      end
     end
 
     def connect
@@ -58,7 +64,7 @@ module NSQ
 
     def do_connect
       @socket.connect_nonblock(@sockaddr)
-      puts 'Holy ugly API, Batman!'
+      # Apparently we always throw an exception here
     rescue Errno::EINPROGRESS
       @connecting = true
     rescue Errno::EISCONN
@@ -113,7 +119,7 @@ module NSQ
     def write(msg)
       NSQ.logger.debug {"#{@name}: Sending #{msg.inspect}"}
       # We should only ever have one reader but we can have multiple writers
-      @write_mutex.synchronize { @socket.write(msg) }
+      @write_mutex.synchronize { @socket.write(msg) if @socket }
     end
 
     def to_s
