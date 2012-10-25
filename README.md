@@ -28,7 +28,6 @@ reader.run   # Doesn't return until reader.stop is called
 puts 'Reader stopped'
 ```
 
-NOTE: Not yet implemented!
 Advanced example demonstrating asynchronous handling of messages on multiple threads:
 ```
 require 'nsq'
