@@ -15,14 +15,6 @@ module NSQ
       Time.at((@timestamp_high * 2**32 + @timestamp_low) / 1000000000.0)
     end
 
-    def success!
-
-    end
-
-    def failure!
-
-    end
-
     def to_s
       "#{connection} id=#{id} timestamp=#{timestamp} attempts=#{attempts} body=#{body}"
     end

@@ -10,7 +10,6 @@ module NSQ
 
     def initialize(options={})
       @options                = options
-      @poll_interval          = options[:poll_interval]                || 5
       @nsqd_tcp_addresses     = s_to_a(options[:nsqd_tcp_addresses])
       @lookupd_http_addresses = s_to_a(options[:lookupd_http_addresses])
       @lookupd_poll_interval  = options[:lookupd_poll_interval]        || 120
@@ -20,6 +19,7 @@ module NSQ
       NSQ.logger.level        = options[:logger_level] if options[:logger_level]
 
       @selector               = ::NIO::Selector.new
+      @timer                  = Timer.new(@selector)
       @topic_count            = Hash.new(0)
       @subscribers            = {}
       @subscriber_mutex       = Monitor.new
@@ -71,7 +71,7 @@ module NSQ
         if (Time.now.to_i - @last_lookup.to_i) > @lookupd_poll_interval
           # Do lookupd
         end
-        @selector.select(@poll_interval) { |m| m.value.call }
+        @selector.select(@timer.next_interval) { |m| m.value.call }
       end
     end
 
@@ -82,6 +82,10 @@ module NSQ
       @subscriber_mutex.synchronize do
         @subscribers.each_value {|subscriber| subscriber.stop}
       end
+    end
+
+    def add_timeout(interval, &block)
+      @timer.add(interval, &block)
     end
 
     def to_s

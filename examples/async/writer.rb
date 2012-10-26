@@ -3,6 +3,7 @@ if ARGV.length != 3
   $stderr.puts "  where <topic> is either test_xy or test_z"
   $stderr.puts "  and <eval-string> could be something like 'sleep rand(100)/10.0'"
   $stderr.puts "  Example: ruby writer.rb test_xy 500 'sleep rand(100)/10.0'"
+  $stderr.puts "       or: ruby writer.rb test_z 5000 nil"
   exit 1
 end
 topic       = ARGV[0]

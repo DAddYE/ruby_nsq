@@ -1,16 +1,26 @@
-require 'thread' #Mutex
+require 'monitor'
 
 module NSQ
   class Connection
     attr_reader :name
 
-    def initialize(subscriber, selector, host, port)
+    def initialize(reader, subscriber, host, port)
+      @reader        = reader
       @subscriber    = subscriber
-      @selector      = selector
+      @selector      = reader.selector
       @host          = host
       @port          = port
       @name          = "#{subscriber.name}:#{host}:#{port}"
-      @write_mutex   = Mutex.new
+      @write_monitor = Monitor.new
+
+      # Connect states :init, :interval, :connecting, :connected, :closed
+      @connect_state = :init
+
+      @next_connection_time     = nil
+      @next_ready_time          = nil
+      @connection_backoff_timer = nil
+      @ready_backoff_timer      = @subscriber.create_ready_backoff_timer
+
       connect
     end
 
@@ -21,7 +31,7 @@ module NSQ
     end
 
     def send_ready(count)
-      @ready_count += count
+      @ready_count = count
       write "RDY #{count}\n"
     end
 
@@ -33,9 +43,30 @@ module NSQ
       write "REQ #{id} #{time_ms}\n"
     end
 
-    def close
+    def reset
+      return unless verify_connect_state?(:connecting, :connected)
+      # Close with the hopes of re-establishing
+      close(false)
+      @write_monitor.synchronize do
+        return unless verify_connect_state?(:init)
+        @connection_backoff_timer ||= @subscriber.create_connection_backoff_timer
+        @connection_backoff_timer.failure
+        interval = @connection_backoff_timer.interval
+        if interval > 0
+          @connect_state = :interval
+          @reader.add_timeout(interval) do
+            NSQ.logger.debug {"#{self}: Reattempting connection in #{interval} seconds"}
+            connect
+          end
+        else
+          connect
+        end
+      end
+    end
+
+    def close(permanent=true)
       NSQ.logger.debug {"#{@name}: Closing..."}
-      @write_mutex.synchronize do
+      @write_monitor.synchronize do
         begin
           @selector.deregister(@socket)
           # Use straight socket to write otherwise we need to use Monitor instead of Mutex
@@ -43,12 +74,16 @@ module NSQ
           @socket.close
         rescue Exception => e
         ensure
-          @socket = nil
+          @connect_state = permanent ? :closed : :init
+          @socket        = nil
         end
       end
     end
 
     def connect
+      return unless verify_connect_state?(:init, :interval)
+      NSQ.logger.debug {"#{self}: Beginning connect"}
+      @connect_state = :connecting
       @buffer        = ''
       @connecting    = false
       @connected     = false
@@ -60,22 +95,38 @@ module NSQ
       do_connect
     end
 
+    def message_success!
+
+    end
+
+    def message_failure!
+
+    end
+
     private
 
     def do_connect
-      @socket.connect_nonblock(@sockaddr)
-      # Apparently we always throw an exception here
-    rescue Errno::EINPROGRESS
-      @connecting = true
-    rescue Errno::EISCONN
-      @selector.deregister(@socket)
-      monitor = @selector.register(@socket, :r)
-      monitor.value = proc { read_messages }
-      @subscriber.handle_connection(self)
-      @connecting = false
-      @connected  = true
-    rescue SystemCallError => e
-      @subscriber.handle_io_error(self, e)
+      @write_monitor.synchronize do
+        return unless verify_connect_state?(:connecting)
+        begin
+          @socket.connect_nonblock(@sockaddr)
+          # Apparently we always throw an exception here
+          NSQ.logger.debug {"#{self}: do_connect fell thru without throwing an exception"}
+        rescue Errno::EINPROGRESS
+          NSQ.logger.debug {"#{self}: do_connect - connect in progress"}
+        rescue Errno::EISCONN
+          NSQ.logger.debug {"#{self}: do_connect - connection complete"}
+          @selector.deregister(@socket)
+          monitor = @selector.register(@socket, :r)
+          monitor.value = proc { read_messages }
+          @connect_state = :connected
+          # The assumption for connections is that a good connection means the server is good, no ramping back up like ready counts
+          @connection_backoff_timer = nil
+          @subscriber.handle_connection(self)
+        rescue SystemCallError => e
+          @subscriber.handle_io_error(self, e)
+        end
+      end
     end
 
     def read_messages
@@ -119,11 +170,26 @@ module NSQ
     def write(msg)
       NSQ.logger.debug {"#{@name}: Sending #{msg.inspect}"}
       # We should only ever have one reader but we can have multiple writers
-      @write_mutex.synchronize { @socket.write(msg) if @socket }
+      @write_monitor.synchronize { @socket.write(msg) if verify_connect_state?(:connected) }
     end
 
     def to_s
       @name
+    end
+
+    private
+
+    def verify_connect_state?(*states)
+      return true if states.include?(@connect_state)
+      NSQ.logger.error("Unexpected connect state of #{@connect_state}, expected to be in #{states.inspect}\n\t#{caller[0]}")
+      if @connect_state != :closed
+        # Likely in a bug state.
+        # I don't want to get in an endless loop of exceptions.  Is this a good idea or bad?  Maybe close to deregister first
+        # Attempt recovery
+        @connect_state = :init
+        connect
+      end
+      return false
     end
   end
 end

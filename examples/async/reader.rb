@@ -46,6 +46,7 @@ reader.stop
 main_thread.join
 threads.each_value { |arr| arr.each(&:join) }
 puts
+puts "Summary of worker message counts"
 threads.each do |char, arr|
   puts "#{char} -  #{arr.map(&:message_count).join(' ')}"
 end

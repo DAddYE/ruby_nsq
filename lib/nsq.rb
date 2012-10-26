@@ -4,6 +4,8 @@ require 'nsq/reader'
 require 'nsq/subscriber'
 require 'nsq/queue_subscriber'
 require 'nsq/connection'
+require 'nsq/backoff_timer'
+require 'nsq/timer'
 
 module NSQ
   extend NSQ::Loggable
