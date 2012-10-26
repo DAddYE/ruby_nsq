@@ -1,4 +1,5 @@
 require 'monitor'
+require 'thread'  #Mutex
 
 module NSQ
   class Connection
@@ -12,6 +13,8 @@ module NSQ
       @port          = port
       @name          = "#{subscriber.name}:#{host}:#{port}"
       @write_monitor = Monitor.new
+      @ready_mutex   = Mutex.new
+      @sending_ready = false
 
       # Connect states :init, :interval, :connecting, :connected, :closed
       @connect_state = :init
@@ -24,23 +27,38 @@ module NSQ
       connect
     end
 
-    def send_init(topic, channel, short_id, long_id, ready_count)
+    def send_init(topic, channel, short_id, long_id)
       write NSQ::MAGIC_V2
       write "SUB #{topic} #{channel} #{short_id} #{long_id}\n"
-      self.send_ready(ready_count)
+      self.send_ready
     end
 
-    def send_ready(count)
-      @ready_count = count
-      write "RDY #{count}\n"
+    def send_ready
+      @ready_count = @subscriber.ready_count
+      write "RDY #{@ready_count}\n" unless @subscriber.stopped?
+      @sending_ready = false
     end
 
-    def send_finish(id)
+    def send_finish(id, success)
       write "FIN #{id}\n"
+      @ready_mutex.synchronize do
+        @ready_count -= 1
+        if success
+          @ready_backoff_timer.success
+        else
+          @ready_backoff_timer.failure
+        end
+        check_ready
+      end
     end
 
     def send_requeue(id, time_ms)
       write "REQ #{id} #{time_ms}\n"
+      @ready_mutex.synchronize do
+        @ready_count -= 1
+        @ready_backoff_timer.failure
+        check_ready
+      end
     end
 
     def reset
@@ -54,8 +72,8 @@ module NSQ
         interval = @connection_backoff_timer.interval
         if interval > 0
           @connect_state = :interval
+          NSQ.logger.debug {"#{self}: Reattempting connection in #{interval} seconds"}
           @reader.add_timeout(interval) do
-            NSQ.logger.debug {"#{self}: Reattempting connection in #{interval} seconds"}
             connect
           end
         else
@@ -95,14 +113,6 @@ module NSQ
       do_connect
     end
 
-    def message_success!
-
-    end
-
-    def message_failure!
-
-    end
-
     private
 
     def do_connect
@@ -125,6 +135,21 @@ module NSQ
           @subscriber.handle_connection(self)
         rescue SystemCallError => e
           @subscriber.handle_io_error(self, e)
+        end
+      end
+    end
+
+    def check_ready
+      if !@sending_ready && @ready_count <= @subscriber.ready_threshold
+        interval = @ready_backoff_timer.interval
+        if interval == 0.0
+          send_ready
+        else
+          NSQ.logger.debug {"#{self}: Delaying READY for #{interval} seconds"}
+          @sending_ready = true
+          @reader.add_timeout(interval) do
+            send_ready
+          end
         end
       end
     end
@@ -170,7 +195,9 @@ module NSQ
     def write(msg)
       NSQ.logger.debug {"#{@name}: Sending #{msg.inspect}"}
       # We should only ever have one reader but we can have multiple writers
-      @write_monitor.synchronize { @socket.write(msg) if verify_connect_state?(:connected) }
+      @write_monitor.synchronize do
+        @socket.write(msg) if verify_connect_state?(:connected)
+      end
     end
 
     def to_s

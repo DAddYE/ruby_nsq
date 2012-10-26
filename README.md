@@ -64,10 +64,6 @@ baz_threads.each(&:join)
 
 ## TODO:
 
-* Ready logic
-
-* Backoff for connections and failed messages.
-
 * Fix timestamp
 
 * Implement lookupd

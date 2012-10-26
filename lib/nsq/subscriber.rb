@@ -12,7 +12,7 @@ module NSQ
       @channel         = channel
       @block           = block
       @max_tries       = options[:max_tries]
-      @max_in_flight   = options[:max_in_flight]  || 1
+      @max_in_flight   = (options[:max_in_flight] || 1).to_i
       @requeue_delay   = (options[:requeue_delay] || 90).to_i * 1000
       @connection_hash = {}
 
@@ -42,10 +42,16 @@ module NSQ
       BackoffTimer.new(@connection_min_interval, @connection_max_interval, @connection_ratio, @connection_short_length, @connection_long_length)
     end
 
-    def connection_max_in_flight
-      # TODO: Maybe think about this a little more
-      val = @max_in_flight / [@connection_hash.size, 1].max
-      [val, 1].max
+    # Threshold for a connection where it's time to send a new READY message
+    def ready_threshold
+      @max_in_flight / @connection_hash.size / 4
+    end
+
+    # The actual value for the READY message
+    def ready_count
+      # TODO: Should we take into account the last_ready_count minus the number of messages sent since then?
+      # Rounding up!
+      (@max_in_flight + @connection_hash.size - 1) / @connection_hash.size
     end
 
     def connection_count
@@ -75,7 +81,7 @@ module NSQ
     end
 
     def handle_connection(connection)
-      connection.send_init(@topic, @channel, @reader.short_id, @reader.long_id, self.connection_max_in_flight)
+      connection.send_init(@topic, @channel, @reader.short_id, @reader.long_id)
     end
 
     def handle_heartbeat(connection)
@@ -87,24 +93,15 @@ module NSQ
 
     def process_message(connection, message, &block)
       yield message
-      connection.send_finish(message.id)
-      connection.message_success!
+      connection.send_finish(message.id, true)
     rescue Exception => e
       NSQ.logger.error("#{connection.name}: Exception during handle_message: #{e.message}\n\t#{e.backtrace.join("\n\t")}")
       if @max_tries && attempts >= @max_tries
         NSQ.logger.warning("#{connection.name}: Giving up on message after #{@max_tries} tries: #{body.inspect}")
-        connection.send_finish(message.id)
+        connection.send_finish(message.id, false)
       else
         connection.send_requeue(message.id, attempts * @requeue_delay)
       end
-      connection.message_failure!
-    ensure
-      handle_ready_count(connection)
-    end
-
-    def handle_ready_count(connection)
-      # TODO: Need to add 25% logic
-      connection.send_ready(self.connection_max_in_flight)
     end
 
     def handle_frame_error(connection, error_message)
