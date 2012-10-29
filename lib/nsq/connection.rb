@@ -103,8 +103,6 @@ module NSQ
       NSQ.logger.debug {"#{self}: Beginning connect"}
       @connect_state = :connecting
       @buffer        = ''
-      @connecting    = false
-      @connected     = false
       @ready_count   = 0
       @socket        = Socket.new(Socket::AF_INET, Socket::SOCK_STREAM, 0)
       @sockaddr      = Socket.pack_sockaddr_in(@port, @host)
