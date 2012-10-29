@@ -3,6 +3,7 @@
 require 'nsq'
 require 'logger'
 
+# Cntl-c doesn't run at_exit under jruby
 puts 'Press enter to start and enter to finish'
 gets
 reader = NSQ.create_reader(
@@ -20,6 +21,8 @@ thread = Thread.new do
   end
   puts 'Reader exiting'
 end
+at_exit {
+  reader.stop
+  thread.join
+}
 gets
-reader.stop
-thread.join

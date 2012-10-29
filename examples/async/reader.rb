@@ -46,13 +46,15 @@ end
 main_thread = Thread.new do
   reader.run
 end
+at_exit {
+  puts 'Exiting...'
+  reader.stop
+  main_thread.join
+  threads.each_value { |arr| arr.each(&:join) }
+  puts
+  puts "Summary of worker message counts"
+  threads.each do |char, arr|
+    puts "#{char} -  #{arr.map(&:message_count).join(' ')}"
+  end
+}
 $stdin.gets
-puts 'Exiting...'
-reader.stop
-main_thread.join
-threads.each_value { |arr| arr.each(&:join) }
-puts
-puts "Summary of worker message counts"
-threads.each do |char, arr|
-  puts "#{char} -  #{arr.map(&:message_count).join(' ')}"
-end
