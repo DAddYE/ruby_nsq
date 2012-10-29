@@ -2,15 +2,15 @@
 
 https://github.com/ClarityServices/ruby_nsq
 
-## Description:
+## Description
 
 Ruby client for the [NSQ](https://github.com/bitly/nsq) realtime message processing system.
 
-## Install:
+## Install
 
   gem install ruby_nsq
 
-## Usage:
+## Usage
 
 See [examples](https://github.com/ClarityServices/ruby_nsq/tree/master/examples)
 
@@ -62,10 +62,23 @@ bar_threads.each(&:join)
 baz_threads.each(&:join)
 ```
 
-## TODO:
-
-* Fix timestamp
+## TODO
 
 * Implement lookupd
 
 * Tests!
+
+* Documentation
+
+## Meta
+
+* Code: `git clone git://github.com/ClarityServices/ruby_nsq.git`
+* Home: <https://github.com/ClarityServices/ruby_nsq>
+* Bugs: <http://github.com/reidmorrison/ruby_nsq/issues>
+* Gems: <http://rubygems.org/gems/ruby_nsq>
+
+This project uses [Semantic Versioning](http://semver.org/).
+
+## Authors
+
+Brad Pardee :: bradpardee@gmail.com

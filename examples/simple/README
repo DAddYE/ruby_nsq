@@ -1,0 +1,4 @@
+# Start up reader
+bundle exec ./reader.rb
+# From another terminal, send a message:
+curl -d 'hello world' 'http://127.0.0.1:4151/put?topic=test'

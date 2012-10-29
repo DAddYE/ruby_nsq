@@ -2,6 +2,7 @@ require 'monitor'
 require 'thread'  #Mutex
 
 module NSQ
+  # Represents a single subscribed connection to an nsqd server.
   class Connection
     attr_reader :name
 
@@ -27,19 +28,19 @@ module NSQ
       connect
     end
 
-    def send_init(topic, channel, short_id, long_id)
+    def send_init(topic, channel, short_id, long_id) #:nodoc:
       write NSQ::MAGIC_V2
       write "SUB #{topic} #{channel} #{short_id} #{long_id}\n"
       self.send_ready
     end
 
-    def send_ready
+    def send_ready #:nodoc:
       @ready_count = @subscriber.ready_count
       write "RDY #{@ready_count}\n" unless @subscriber.stopped?
       @sending_ready = false
     end
 
-    def send_finish(id, success)
+    def send_finish(id, success) #:nodoc:
       write "FIN #{id}\n"
       @ready_mutex.synchronize do
         @ready_count -= 1
@@ -52,7 +53,7 @@ module NSQ
       end
     end
 
-    def send_requeue(id, time_ms)
+    def send_requeue(id, time_ms) #:nodoc:
       write "REQ #{id} #{time_ms}\n"
       @ready_mutex.synchronize do
         @ready_count -= 1
@@ -61,7 +62,7 @@ module NSQ
       end
     end
 
-    def reset
+    def reset #:nodoc:
       return unless verify_connect_state?(:connecting, :connected)
       # Close with the hopes of re-establishing
       close(false)
@@ -82,7 +83,7 @@ module NSQ
       end
     end
 
-    def close(permanent=true)
+    def close(permanent=true) #:nodoc:
       NSQ.logger.debug {"#{@name}: Closing..."}
       @write_monitor.synchronize do
         begin
@@ -98,7 +99,7 @@ module NSQ
       end
     end
 
-    def connect
+    def connect #:nodoc:
       return unless verify_connect_state?(:init, :interval)
       NSQ.logger.debug {"#{self}: Beginning connect"}
       @connect_state = :connecting
@@ -109,6 +110,10 @@ module NSQ
       @monitor       = @selector.register(@socket, :w)
       @monitor.value = proc { do_connect }
       do_connect
+    end
+
+    def to_s #:nodoc:
+      @name
     end
 
     private
@@ -197,12 +202,6 @@ module NSQ
         @socket.write(msg) if verify_connect_state?(:connected)
       end
     end
-
-    def to_s
-      @name
-    end
-
-    private
 
     def verify_connect_state?(*states)
       return true if states.include?(@connect_state)

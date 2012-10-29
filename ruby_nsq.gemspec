@@ -2,7 +2,7 @@ Gem::Specification.new do |s|
   s.name        = 'ruby_nsq'
   s.version     = '0.0.1'
   s.summary     = 'Ruby client for NSQ'
-  s.description = 'Ruby client for NSQ modeled after pynsq'
+  s.description = 'Ruby client for the NSQ realtime message processing system'
   s.authors     = ['Brad Pardee']
   s.email       = ['bradpardee@gmail.com']
   s.homepage    = 'http://github.com/ClarityServices/ruby_nsq'

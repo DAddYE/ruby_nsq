@@ -1,6 +1,7 @@
 require 'thread'
 
 module NSQ
+  #:nodoc:
   class Timer
     def initialize(selector)
       @selector   = selector

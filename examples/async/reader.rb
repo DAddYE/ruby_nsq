@@ -13,7 +13,7 @@ $stdin.gets
 
 reader = NSQ.create_reader(
     :nsqd_tcp_addresses => '127.0.0.1:4150',
-    :logger_level       => Logger::DEBUG
+    #:logger_level       => Logger::DEBUG
 )
 
 x_subscriber   = reader.subscribe('test_xy', 'x', :max_in_flight => x_worker_count)

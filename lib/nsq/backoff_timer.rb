@@ -34,7 +34,8 @@ module NSQ
       @short_interval  = [@short_interval, @max_short_timer].min
       @long_interval   = [@long_interval, @max_long_timer].min
     end
-    
+
+    # Return the interval to wait based on the successes and failures
     def interval
       @min_interval + @short_interval + @long_interval
     end
