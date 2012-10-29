@@ -12,7 +12,9 @@ module NSQ
     end
 
     def timestamp
-      Time.at((@timestamp_high * 2**32 + @timestamp_low) / 1000000000.0)
+      # TODO: Not really a nanosecond timestamp
+      #Time.at((@timestamp_high * 2**32 + @timestamp_low) / 1000000000.0)
+      Time.at(@timestamp_low)
     end
 
     def to_s
