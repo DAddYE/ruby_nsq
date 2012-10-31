@@ -6,14 +6,14 @@ require 'logger'
 # Cntl-c doesn't run at_exit under jruby
 puts 'Press enter to start and enter to finish'
 gets
-reader = NSQ.create_reader(
+reader = NSQ::Reader.new(
     :nsqd_tcp_addresses => '127.0.0.1:4150',
     #:logger_level       => Logger::DEBUG
 )
 thread = Thread.new do
   begin
     reader.subscribe('test', 'simple') do |message|
-      puts "Read #{message.body}"
+      puts "Read: #{message.body.inspect}"
     end
     reader.run
   rescue Exception => e

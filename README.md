@@ -18,7 +18,7 @@ Simple example for synchronous message handling:
 ```
 require 'nsq'
 
-reader = NSQ.create_reader(:nsqd_tcp_addresses => '127.0.0.1:4150')
+reader = NSQ::Reader.new(:nsqd_tcp_addresses => '127.0.0.1:4150')
 # Subscribe to topic=test channel=simple
 reader.subscribe('test', 'simple') do |message|
   # If this block raises an exception, then the message will be requeued.
@@ -36,7 +36,7 @@ foo_worker_count = 50
 bar_worker_count = 30
 baz_worker_count = 20
 
-reader = NSQ.create_reader(:nsqd_tcp_addresses => '127.0.0.1:4150')
+reader = NSQ::Reader.new(:nsqd_tcp_addresses => '127.0.0.1:4150')
 
 foo_subscriber  = reader.subscribe('test',  'foo', :max_in_flight => foo_worker_count)
 bar_subscriber  = reader.subscribe('test2', 'bar', :max_in_flight => bar_worker_count)

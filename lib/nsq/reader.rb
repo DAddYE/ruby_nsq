@@ -67,7 +67,7 @@ module NSQ
     # Refer to Subscriber::new for the options that can be passed to this method.
     #
     def subscribe(topic, channel, options={}, &block)
-      NSQ.assert_topic_and_channel_valid(topic, channel)
+      Util.assert_topic_and_channel_valid(topic, channel)
       subscriber = nil
       name       = "#{topic}:#{channel}"
       @subscriber_mutex.synchronize do

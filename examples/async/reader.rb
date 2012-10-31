@@ -11,7 +11,7 @@ z_worker_count = 20
 puts 'Press enter to start and enter to finish'
 $stdin.gets
 
-reader = NSQ.create_reader(
+reader = NSQ::Reader.new(
     :nsqd_tcp_addresses => '127.0.0.1:4150',
     #:logger_level       => Logger::DEBUG
 )
@@ -54,7 +54,7 @@ at_exit {
   puts
   puts "Summary of worker message counts"
   threads.each do |char, arr|
-    puts "#{char} -  #{arr.map(&:message_count).join(' ')}"
+    puts "#{char} -  #{arr.map(&:message_count).join(' ')} total=#{arr.map(&:message_count).inject(:+)}"
   end
 }
 $stdin.gets

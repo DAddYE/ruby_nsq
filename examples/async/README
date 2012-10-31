@@ -1,0 +1,6 @@
+# Start up reader
+bundle exec ./reader.rb
+Hit <RETURN> to initialize the Reader and <RETURN> again when you want to stop the reader
+
+# Run publisher with no arguments to get usage info:
+bundle exec ./publisher.rb
