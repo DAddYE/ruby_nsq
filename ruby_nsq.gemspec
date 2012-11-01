@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'ruby_nsq'
-  s.version     = '0.0.1'
+  s.version     = '0.0.2'
   s.summary     = 'Ruby client for NSQ'
   s.description = 'Ruby client for the NSQ realtime message processing system'
   s.authors     = ['Brad Pardee']
@@ -10,7 +10,7 @@ Gem::Specification.new do |s|
   s.test_files  = Dir["test/**/*"]
 
   s.add_dependency 'nio4r'
-  s.add_dependency 'resilient_socket'
+  #s.add_dependency 'resilient_socket'
   s.add_development_dependency 'rdoc'
   s.add_development_dependency 'minitest'
   s.add_development_dependency 'turn'
