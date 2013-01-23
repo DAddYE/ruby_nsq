@@ -68,13 +68,13 @@ baz_threads.each(&:join)
 
 * Tests!
 
-* Documentation
+* Support IPv6
 
 ## Meta
 
 * Code: `git clone git://github.com/ClarityServices/ruby_nsq.git`
 * Home: <https://github.com/ClarityServices/ruby_nsq>
-* Bugs: <http://github.com/reidmorrison/ruby_nsq/issues>
+* Bugs: <http://github.com/ClarityServices/ruby_nsq/issues>
 * Gems: <http://rubygems.org/gems/ruby_nsq>
 
 This project uses [Semantic Versioning](http://semver.org/).
