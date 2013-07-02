@@ -20,7 +20,8 @@ module NSQ
         size, frame, msg = response.unpack('NNa*')
         if response.length == size+4
           case msg
-            when 'OK' then return
+            when 'OK'            then return
+            when '_heartbeat_'   then response = ""
             when 'E_INVALID'     then raise 'Invalid message'
             when 'E_BAD_TOPIC'   then raise 'Bad topic'
             when 'E_BAD_MESSAGE' then raise 'Bad message'
