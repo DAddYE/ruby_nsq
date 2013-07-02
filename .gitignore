@@ -2,6 +2,6 @@
 bin/
 Gemfile.lock
 .idea/
-.rbenv*
+.ruby-version
 pkg/
 vendor/bundle

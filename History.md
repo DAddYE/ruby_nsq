@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.0.3
+-----
+
+ - Properly handle heartbeats received by Publishers (Burke Libbey)
+
 0.0.2
 -----
 
