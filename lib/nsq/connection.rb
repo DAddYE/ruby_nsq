@@ -167,11 +167,10 @@ module NSQ
             if @buffer[8,11] == "_heartbeat_"
               send_nop
               @subscriber.handle_heartbeat(self)
-              @buffer = @buffer[(4+size)..-1]
-            else
+            elsif @buffer[8, 2] != "OK"
               NSQ.logger.error("I don't know what to do with the rest of this buffer: #{@buffer[8,size-4].inspect}") if @buffer.length > 8
-              @buffer = @buffer[(4+size)..-1]
             end
+            @buffer = @buffer[(4+size)..-1]
           when NSQ::FRAME_TYPE_ERROR
             @subscriber.handle_frame_error(self, @buffer[8, size-4])
             @buffer = @buffer[(4+size)..-1]

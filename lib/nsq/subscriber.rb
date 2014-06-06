@@ -107,7 +107,7 @@ module NSQ
 
     def add_connection(host, port) #:nodoc:
       @connection_hash[[host, port]] = Connection.new(@reader, self, host, port)
-    end
+   end
 
     def remove_connection(host, port) #:nodoc:
       connection = @connection_hash.delete([host, port])
