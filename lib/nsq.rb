@@ -17,9 +17,4 @@ module NSQ
   FRAME_TYPE_RESPONSE = 0
   FRAME_TYPE_ERROR    = 1
   FRAME_TYPE_MESSAGE  = 2
-
-  def self.create_reader(options, &block) #:nodoc:
-    NSQ.logger.info('NSQ#create_reader has been deprecated, please use NSQ::Reader#new instead')
-    Reader.new(options, &block)
-  end
 end

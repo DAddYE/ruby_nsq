@@ -28,9 +28,9 @@ module NSQ
       connect
     end
 
-    def send_init(topic, channel, short_id, long_id) #:nodoc:
+    def send_init(topic, channel) #:nodoc:
       write NSQ::MAGIC_V2
-      write "SUB #{topic} #{channel} #{short_id} #{long_id}\n"
+      write "SUB #{topic} #{channel}\n"
       self.send_ready
     end
 

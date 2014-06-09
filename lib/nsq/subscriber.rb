@@ -130,7 +130,7 @@ module NSQ
     end
 
     def handle_connection(connection) #:nodoc:
-      connection.send_init(@topic, @channel, @reader.short_id, @reader.long_id)
+      connection.send_init(@topic, @channel)
     end
 
     def handle_heartbeat(connection) #:nodoc:
