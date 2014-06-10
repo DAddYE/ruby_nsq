@@ -91,7 +91,7 @@ module NSQ
           # Use straight socket to write otherwise we need to use Monitor instead of Mutex
           @socket.write "CLS\n"
           @socket.close
-        rescue Exception => e
+        rescue Exception
         ensure
           @connect_state = permanent ? :closed : :init
           @socket        = nil
@@ -203,16 +203,7 @@ module NSQ
     end
 
     def verify_connect_state?(*states)
-      return true if states.include?(@connect_state)
-      NSQ.logger.error("Unexpected connect state of #{@connect_state}, expected to be in #{states.inspect}\n\t#{caller[0]}")
-      if @connect_state != :closed
-        # Likely in a bug state.
-        # I don't want to get in an endless loop of exceptions.  Is this a good idea or bad?  Maybe close to deregister first
-        # Attempt recovery
-        @connect_state = :init
-        connect
-      end
-      return false
+      states.include?(@connect_state)
     end
   end
 end
