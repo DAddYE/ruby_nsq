@@ -4,7 +4,7 @@ require 'thread'  #Mutex
 module NSQ
   # Represents a single subscribed connection to an nsqd server.
   class Connection
-    attr_reader :name
+    include NSQ::Logger
 
     def initialize(reader, subscriber, host, port)
       @reader        = reader
@@ -12,7 +12,6 @@ module NSQ
       @selector      = reader.selector
       @host          = host
       @port          = port
-      @name          = "#{subscriber.name}:#{host}:#{port}"
       @write_monitor = Monitor.new
       @ready_mutex   = Mutex.new
       @sending_ready = false
@@ -31,7 +30,7 @@ module NSQ
     def send_init(topic, channel) #:nodoc:
       write NSQ::MAGIC_V2
       write "SUB #{topic} #{channel}\n"
-      self.send_ready
+      send_ready
     end
 
     def send_ready #:nodoc:
@@ -73,10 +72,8 @@ module NSQ
         interval = @connection_backoff_timer.interval
         if interval > 0
           @connect_state = :interval
-          NSQ.logger.debug {"#{self}: Reattempting connection in #{interval} seconds"}
-          @reader.add_timeout(interval) do
-            connect
-          end
+          logger.debug("Reattempting connection in #{interval} seconds")
+          @reader.add_timeout(interval, method(:connect))
         else
           connect
         end
@@ -84,7 +81,7 @@ module NSQ
     end
 
     def close(permanent=true) #:nodoc:
-      NSQ.logger.debug {"#{@name}: Closing..."}
+      logger.debug "Closing..."
       @write_monitor.synchronize do
         begin
           @selector.deregister(@socket)
@@ -101,19 +98,15 @@ module NSQ
 
     def connect #:nodoc:
       return unless verify_connect_state?(:init, :interval)
-      NSQ.logger.debug {"#{self}: Beginning connect"}
+      logger.debug {"#{self}: Beginning connect"}
       @connect_state = :connecting
       @buffer        = ''
       @ready_count   = 0
       @socket        = Socket.new(Socket::AF_INET, Socket::SOCK_STREAM, 0)
       @sockaddr      = Socket.pack_sockaddr_in(@port, @host)
       @monitor       = @selector.register(@socket, :w)
-      @monitor.value = proc { do_connect }
+      @monitor.value = method(:do_connect)
       do_connect
-    end
-
-    def to_s #:nodoc:
-      @name
     end
 
     private
@@ -124,14 +117,14 @@ module NSQ
         begin
           @socket.connect_nonblock(@sockaddr)
           # Apparently we always throw an exception here
-          NSQ.logger.debug {"#{self}: do_connect fell thru without throwing an exception"}
+          logger.debug {"#{self}: do_connect fell thru without throwing an exception"}
         rescue Errno::EINPROGRESS
-          NSQ.logger.debug {"#{self}: do_connect - connect in progress"}
+          logger.debug {"#{self}: do_connect - connect in progress"}
         rescue Errno::EISCONN
-          NSQ.logger.debug {"#{self}: do_connect - connection complete"}
+          logger.debug {"#{self}: do_connect - connection complete"}
           @selector.deregister(@socket)
           monitor = @selector.register(@socket, :r)
-          monitor.value = proc { read_messages }
+          monitor.value = method(:read_messages)
           @connect_state = :connected
           # The assumption for connections is that a good connection means the server is good, no ramping back up like ready counts
           @connection_backoff_timer = nil
@@ -148,11 +141,9 @@ module NSQ
         if interval == 0.0
           send_ready
         else
-          NSQ.logger.debug {"#{self}: Delaying READY for #{interval} seconds"}
+          logger.debug {"#{self}: Delaying READY for #{interval} seconds"}
           @sending_ready = true
-          @reader.add_timeout(interval) do
-            send_ready
-          end
+          @reader.add_timeout(interval, method(:send_ready))
         end
       end
     end
@@ -162,28 +153,29 @@ module NSQ
       while @buffer.length >= 8
         size, frame = @buffer.unpack('NN')
         break if @buffer.length < 4+size
+ 
         case frame
-          when NSQ::FRAME_TYPE_RESPONSE
-            if @buffer[8,11] == "_heartbeat_"
-              send_nop
-              @subscriber.handle_heartbeat(self)
-            elsif @buffer[8, 2] != "OK"
-              NSQ.logger.error("I don't know what to do with the rest of this buffer: #{@buffer[8,size-4].inspect}") if @buffer.length > 8
-            end
-            @buffer = @buffer[(4+size)..-1]
-          when NSQ::FRAME_TYPE_ERROR
-            @subscriber.handle_frame_error(self, @buffer[8, size-4])
-            @buffer = @buffer[(4+size)..-1]
-          when NSQ::FRAME_TYPE_MESSAGE
-            raise "Bad message: #{@buffer.inspect}" if size < 30
-            ts_hi, ts_lo, attempts, id = @buffer.unpack('@8NNna16')
-            body = @buffer[34, size-30]
-            message = Message.new(self, id, ts_hi, ts_lo, attempts, body)
-            @buffer = @buffer[(4+size)..-1]
-            NSQ.logger.debug {"#{self}: Read message=#{message}"}
-            @subscriber.handle_message(self, message)
-          else
-            raise "Unrecognized message frame: #{frame} buffer=#{@buffer.inspect}"
+        when NSQ::FRAME_TYPE_RESPONSE
+          if @buffer[8,11] == "_heartbeat_"
+            send_nop
+            @subscriber.handle_heartbeat(self)
+          elsif @buffer[8, 2] != "OK"
+            logger.error("I don't know what to do with the rest of this buffer: #{@buffer[8,size-4].inspect}") if @buffer.length > 8
+          end
+          @buffer = @buffer[(4+size)..-1]
+        when NSQ::FRAME_TYPE_ERROR
+          @subscriber.handle_frame_error(self, @buffer[8, size-4])
+          @buffer = @buffer[(4+size)..-1]
+        when NSQ::FRAME_TYPE_MESSAGE
+          raise "Bad message: #{@buffer.inspect}" if size < 30
+          ts_hi, ts_lo, attempts, id = @buffer.unpack('@8NNna16')
+          body = @buffer[34, size-30]
+          message = Message.new(self, id, ts_hi, ts_lo, attempts, body)
+          @buffer = @buffer[(4+size)..-1]
+          logger.debug("Read message=#{message}")
+          @subscriber.handle_message(self, message)
+        else
+          raise "Unrecognized message frame: #{frame} buffer=#{@buffer.inspect}"
         end
       end
     rescue Exception => e
@@ -195,7 +187,7 @@ module NSQ
     end
 
     def write(msg)
-      NSQ.logger.debug {"#{@name}: Sending #{msg.inspect}"}
+      logger.debug("Sending #{msg.inspect}")
       # We should only ever have one reader but we can have multiple writers
       @write_monitor.synchronize do
         @socket.write(msg) if verify_connect_state?(:connected)
