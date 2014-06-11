@@ -19,8 +19,6 @@ module NSQ
       # Connect states :init, :interval, :connecting, :connected, :closed
       @connect_state = :init
 
-      @next_connection_time     = nil
-      @next_ready_time          = nil
       @connection_backoff_timer = nil
       @ready_backoff_timer      = @subscriber.create_ready_backoff_timer
 

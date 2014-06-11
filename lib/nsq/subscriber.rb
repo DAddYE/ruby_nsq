@@ -144,11 +144,11 @@ module NSQ
       connection.send_finish(message.id, true)
     rescue Exception => e
       logger.error("Exception during handle_message: #{e.message}\n\t#{e.backtrace.join("\n\t")}")
-      if @max_tries && attempts >= @max_tries
-        logger.warning("Giving up on message after #{@max_tries} tries: #{body.inspect}")
+      if @max_tries && message.attempts >= @max_tries
+        logger.warning("Giving up on message after #{@max_tries} tries: #{message.body.inspect}")
         connection.send_finish(message.id, false)
       else
-        connection.send_requeue(message.id, attempts * @requeue_delay)
+        connection.send_requeue(message.id, message.attempts * @requeue_delay)
       end
     end
 

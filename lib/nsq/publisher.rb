@@ -35,7 +35,7 @@ module NSQ
     end
 
     def close
-      @mutex.synchronize { @socket.close }
+      @socket.close
     end
   end
 end

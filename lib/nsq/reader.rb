@@ -76,12 +76,6 @@ module NSQ
       @stop.value
     end
 
-    def stop!
-      @stop.try_update { |m| m = true }
-    rescue Atomic::ConcurrentUpdateError
-      retry
-    end
-
     # Processes all the messages from the subscribed connections.  This will not return until #stop
     # has been called in a separate thread.
     def run
@@ -93,9 +87,11 @@ module NSQ
     # Stop this reader which will gracefully exit the run method after all current messages are processed.
     def stop
       logger.debug("#{self}: Reader stopping...")
-      @stopped = true
+      @stop.try_update { |m| m = true }
       @selector.wakeup
       @subscribers.each(&:stop)
+    rescue Atomic::ConcurrentUpdateError
+      retry
     end
 
     # Call the given block from within the #run thread when the given interval has passed.

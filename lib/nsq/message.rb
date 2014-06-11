@@ -5,7 +5,6 @@ module NSQ
     def initialize(connection, id, timestamp_high, timestamp_low, attempts, body)
       @connection     = connection
       @id             = id
-      @timestamp_high = timestamp_high
       @timestamp_low  = timestamp_low
       @attempts       = attempts
       @body           = body
