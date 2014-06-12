@@ -89,7 +89,7 @@ module NSQ
       logger.debug("#{self}: Reader stopping...")
       @stop.try_update { |m| m = true }
       @selector.wakeup
-      @subscribers.each(&:stop)
+      @subscribers.each_value(&:stop)
     rescue Atomic::ConcurrentUpdateError
       retry
     end
