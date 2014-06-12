@@ -11,6 +11,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'nio4r'
   s.add_dependency 'thread_safe'
+  s.add_dependency 'atomic'
   s.add_development_dependency 'rdoc'
   s.add_development_dependency 'rake'
   s.add_development_dependency 'minitest'

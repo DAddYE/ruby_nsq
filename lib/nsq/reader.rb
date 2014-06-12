@@ -1,5 +1,6 @@
 require 'nio'
 require 'thread_safe'
+require 'atomic'
 
 module NSQ
   # Maintains a collection of subscribers to topics and channels.
@@ -33,6 +34,7 @@ module NSQ
       @timer       = Timer.new(@selector)
       @subscribers = ThreadSafe::Cache.new
       @stop        = Atomic.new(false)
+      @running     = Atomic.new(false)
 
       raise 'Must pass either option :nsqd_tcp_addresses' if @nsqd_tcp_addresses.empty?
     end
@@ -76,18 +78,26 @@ module NSQ
       @stop.value
     end
 
+    def running?
+      @running.value
+    end
+
     # Processes all the messages from the subscribed connections.  This will not return until #stop
     # has been called in a separate thread.
     def run
-      until stopped? do
+      @running.value = true # we can't run from multiple threads so this is fine
+      until stopped?
         @selector.select(@timer.next_interval) { |m| m.value.call }
       end
+    ensure
+      @running.value = false
     end
 
     # Stop this reader which will gracefully exit the run method after all current messages are processed.
     def stop
       logger.debug("#{self}: Reader stopping...")
       @stop.try_update { |m| m = true }
+      @running.try_update { |m| m = false }
       @selector.wakeup
       @subscribers.each_value(&:stop)
     rescue Atomic::ConcurrentUpdateError

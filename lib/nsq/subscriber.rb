@@ -119,7 +119,7 @@ module NSQ
     # Stop this subscriber
     def stop
       @stopped = true
-      @connection_hash.each(&:close)
+      @connection_hash.each_value(&:close)
       @connection_hash.clear
     end
 

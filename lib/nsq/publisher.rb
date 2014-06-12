@@ -44,7 +44,7 @@ module NSQ
     end
 
     def close
-      @socket.close
+      @socket.close if @socket
     end
 
     private
