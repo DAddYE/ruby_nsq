@@ -15,7 +15,7 @@ module NSQ
     end
 
     def publish(topic, message)
-      buf = ['PUB ', topic, "\n", message.length, message].pack('a*a*a*Na*')
+      buf = ['PUB ', topic, "\n", message.bytesize, message].pack('a*a*a*Na*')
       @socket.write(buf)
 
       response = ''

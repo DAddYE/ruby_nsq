@@ -102,6 +102,7 @@ module NSQ
       @ready_count   = 0
       @socket        = Socket.new(Socket::AF_INET, Socket::SOCK_STREAM, 0)
       @sockaddr      = Socket.pack_sockaddr_in(@port, @host)
+      @socket.set_encoding 'UTF-8'
       @monitor       = @selector.register(@socket, :w)
       @monitor.value = method(:do_connect)
       do_connect
@@ -167,7 +168,7 @@ module NSQ
         when NSQ::FRAME_TYPE_MESSAGE
           raise "Bad message: #{@buffer.inspect}" if size < 30
           ts_hi, ts_lo, attempts, id = @buffer.unpack('@8NNna16')
-          body = @buffer[34, size-30]
+          body = @buffer[34, size-30].force_encoding('UTF-8')
           message = Message.new(self, id, ts_hi, ts_lo, attempts, body)
           @buffer = @buffer[(4+size)..-1]
           logger.debug("Read message=#{message}")
