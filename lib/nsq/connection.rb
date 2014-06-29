@@ -71,7 +71,7 @@ module NSQ
         if interval > 0
           @connect_state = :interval
           logger.debug("Reattempting connection in #{interval} seconds")
-          @reader.add_timeout(interval, method(:connect))
+          @reader.add_timeout(interval, &method(:connect))
         else
           connect
         end
