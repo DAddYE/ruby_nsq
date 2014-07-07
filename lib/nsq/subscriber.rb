@@ -1,6 +1,8 @@
 module NSQ
   class Subscriber
-    attr_reader :selector, :name
+    include NSQ::Logger
+
+    attr_reader :selector
     attr_accessor :max_in_flight
 
     # Creates a new subscriber which maintain connections to all the nsqd instances which publish
@@ -52,7 +54,6 @@ module NSQ
     #
     def initialize(reader, topic, channel, options, &block)
       options          = reader.options.merge(options)
-      @name            = "#{reader.name}:#{topic}:#{channel}"
       @reader          = reader
       @selector        = reader.selector
       @topic           = topic
@@ -118,9 +119,7 @@ module NSQ
     # Stop this subscriber
     def stop
       @stopped = true
-      @connection_hash.each_value do |connection|
-        connection.close
-      end
+      @connection_hash.each_value(&:close)
       @connection_hash.clear
     end
 
@@ -130,7 +129,7 @@ module NSQ
     end
 
     def handle_connection(connection) #:nodoc:
-      connection.send_init(@topic, @channel, @reader.short_id, @reader.long_id)
+      connection.send_init(@topic, @channel)
     end
 
     def handle_heartbeat(connection) #:nodoc:
@@ -141,30 +140,26 @@ module NSQ
     end
 
     def process_message(connection, message, &block) #:nodoc:
-      yield message
+      block[message]
       connection.send_finish(message.id, true)
     rescue Exception => e
-      NSQ.logger.error("#{connection.name}: Exception during handle_message: #{e.message}\n\t#{e.backtrace.join("\n\t")}")
-      if @max_tries && attempts >= @max_tries
-        NSQ.logger.warning("#{connection.name}: Giving up on message after #{@max_tries} tries: #{body.inspect}")
+      logger.error("Exception during handle_message: #{e.message}\n\t#{e.backtrace.join("\n\t")}")
+      if @max_tries && message.attempts >= @max_tries
+        logger.warning("Giving up on message after #{@max_tries} tries: #{message.body.inspect}")
         connection.send_finish(message.id, false)
       else
-        connection.send_requeue(message.id, attempts * @requeue_delay)
+        connection.send_requeue(message.id, message.attempts * @requeue_delay)
       end
     end
 
     def handle_frame_error(connection, error_message) #:nodoc:
-      NSQ.logger.error("Received error from nsqd: #{error_message.inspect}")
+      logger.error("Received error from nsqd: #{error_message.inspect}")
       connection.reset
     end
 
     def handle_io_error(connection, exception) #:nodoc:
-      NSQ.logger.error("Socket error: #{exception.message}\n\t#{exception.backtrace[0,2].join("\n\t")}")
+      logger.error("Socket error: #{exception.message}\n\t#{exception.backtrace[0,2].join("\n\t")}")
       connection.reset
-    end
-
-    def to_s #:nodoc:
-      @name
     end
   end
 end
