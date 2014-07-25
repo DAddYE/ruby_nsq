@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.0.4
+-----
+
+ - Refactoring
+ - Bug fixes
+
 0.0.3
 -----
 

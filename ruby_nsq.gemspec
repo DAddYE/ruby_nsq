@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'ruby_nsq'
-  s.version     = '0.0.3'
+  s.version     = '0.0.4'
   s.summary     = 'Ruby client for NSQ'
   s.description = 'Ruby client for the NSQ realtime message processing system'
   s.authors     = ['Brad Pardee', "DAddYE (Davide D'Agostino)"]
