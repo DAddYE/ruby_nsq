@@ -1,8 +1,4 @@
-# ruby_nsq
-
-https://github.com/ClarityServices/ruby_nsq
-
-## Description
+# Ruby NSQ
 
 Ruby client for the [NSQ](https://github.com/bitly/nsq) realtime message processing system.
 
@@ -15,7 +11,7 @@ Ruby client for the [NSQ](https://github.com/bitly/nsq) realtime message process
 See [examples](https://github.com/ClarityServices/ruby_nsq/tree/master/examples)
 
 Simple example for synchronous message handling:
-```
+```rb
 require 'nsq'
 
 reader = NSQ::Reader.new(:nsqd_tcp_addresses => '127.0.0.1:4150')
@@ -29,14 +25,14 @@ puts 'Reader stopped'
 ```
 
 Advanced example demonstrating asynchronous handling of messages on multiple threads:
-```
+```rb
 require 'nsq'
 
 foo_worker_count = 50
 bar_worker_count = 30
 baz_worker_count = 20
 
-reader = NSQ::Reader.new(:nsqd_tcp_addresses => '127.0.0.1:4150')
+reader = NSQ::Reader.new(nsqd_tcp_addresses: '127.0.0.1:4150')
 
 foo_subscriber  = reader.subscribe('test',  'foo', :max_in_flight => foo_worker_count)
 bar_subscriber  = reader.subscribe('test2', 'bar', :max_in_flight => bar_worker_count)
@@ -72,9 +68,9 @@ baz_threads.each(&:join)
 
 ## Meta
 
-* Code: `git clone git://github.com/ClarityServices/ruby_nsq.git`
-* Home: <https://github.com/ClarityServices/ruby_nsq>
-* Bugs: <http://github.com/ClarityServices/ruby_nsq/issues>
+* Code: `git clone git://github.com/daddye/ruby_nsq.git`
+* Home: <https://github.com/daddye/ruby_nsq>
+* Bugs: <http://github.com/daddye/ruby_nsq/issues>
 * Gems: <http://rubygems.org/gems/ruby_nsq>
 
 This project uses [Semantic Versioning](http://semver.org/).
@@ -82,3 +78,4 @@ This project uses [Semantic Versioning](http://semver.org/).
 ## Authors
 
 Brad Pardee :: bradpardee@gmail.com
+Davide D'Agostino (@DAddYE) :: info@daddye.it
